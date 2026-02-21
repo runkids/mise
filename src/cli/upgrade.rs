@@ -12,7 +12,7 @@ use crate::toolset::{
 };
 use crate::ui::multi_progress_report::MultiProgressReport;
 use crate::ui::progress_report::SingleReport;
-use crate::{config, exit, ui};
+use crate::{config, exit, runtime_symlinks, ui};
 use console::Term;
 use demand::DemandOption;
 use eyre::{Context, Result, eyre};
@@ -258,6 +258,12 @@ impl Upgrade {
 
         // Reset config after upgrades so tracked configs resolve with new versions
         *config = Config::reset().await?;
+
+        // Rebuild symlinks BEFORE getting versions needed by tracked configs
+        // This ensures "latest" symlinks point to the new versions, not the old ones
+        runtime_symlinks::rebuild(config)
+            .await
+            .wrap_err("failed to rebuild runtime symlinks")?;
 
         // Get versions needed by tracked configs AFTER upgrade
         // This ensures we don't uninstall versions still needed by other projects

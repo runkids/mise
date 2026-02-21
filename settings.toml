@@ -1,6 +1,5 @@
 # This file generates code and documentation for settings in mise
 # When this file is updated, run `mise run render` to update generated files
-
 [activate_aggressive]
 description = "Pushes tools' bin-paths to the front of PATH instead of allowing modifications of PATH after activation to take precedence."
 docs = """
@@ -28,6 +27,33 @@ to `true`.
 In that case, using this example again, `/some/other/python` will be after mise's python in PATH.
 """
 env = "MISE_ACTIVATE_AGGRESSIVE"
+type = "Bool"
+
+[age.identity_files]
+description = "[experimental] List of age identity files to use for decryption."
+env = "MISE_AGE_IDENTITY_FILES"
+optional = true
+rust_type = "Vec<PathBuf>"
+type = "ListPath"
+
+[age.key_file]
+default_docs = "~/.config/mise/age.txt"
+description = "[experimental] Path to the age private key file to use for encryption/decryption."
+env = "MISE_AGE_KEY_FILE"
+optional = true
+type = "Path"
+
+[age.ssh_identity_files]
+description = "[experimental] List of SSH identity files to use for age decryption."
+env = "MISE_AGE_SSH_IDENTITY_FILES"
+optional = true
+rust_type = "Vec<PathBuf>"
+type = "ListPath"
+
+[age.strict]
+default = true
+description = "If true, fail when age decryption fails (including when age is not available, the key is missing, or the key is invalid). If false, skip decryption and continue in these cases."
+env = "MISE_AGE_STRICT"
 type = "Bool"
 
 [all_compile]
@@ -191,6 +217,12 @@ mise use -g cargo-binstall
 env = "MISE_CARGO_BINSTALL"
 type = "Bool"
 
+[cargo.binstall_only]
+default = false
+description = "Only use cargo-binstall for installation, fail if not available."
+env = "MISE_CARGO_BINSTALL_ONLY"
+type = "Bool"
+
 [cargo.registry_name]
 description = "Name of the cargo registry to use."
 docs = """
@@ -210,21 +242,6 @@ description = "Use cargo-binstall instead of cargo install if available"
 hide = true
 optional = true
 type = "Bool"
-
-[conda.channel]
-default = "conda-forge"
-description = "Default channel for conda packages."
-docs = """
-Default conda channel when installing packages with the conda backend.
-Override per-package with `conda:package[channel=bioconda]`.
-
-The most common channels are:
-- `conda-forge` - Community-maintained packages (default)
-- `bioconda` - Bioinformatics packages
-- `nvidia` - NVIDIA CUDA packages
-"""
-env = "MISE_CONDA_CHANNEL"
-type = "String"
 
 [cd]
 description = "Path to change to after launching mise"
@@ -285,6 +302,21 @@ try setting this to `base16`.
 """
 enum = ["default", "charm", "base16", "catppuccin", "dracula"]
 env = "MISE_COLOR_THEME"
+type = "String"
+
+[conda.channel]
+default = "conda-forge"
+description = "Default channel for conda packages."
+docs = """
+Default conda channel when installing packages with the conda backend.
+Override per-package with `conda:package[channel=bioconda]`.
+
+The most common channels are:
+- `conda-forge` - Community-maintained packages (default)
+- `bioconda` - Bioinformatics packages
+- `nvidia` - NVIDIA CUDA packages
+"""
+env = "MISE_CONDA_CHANNEL"
 type = "String"
 
 [debug]
@@ -453,6 +485,12 @@ tool versions, settings, or watched files change.
 env = "MISE_ENV_CACHE_TTL"
 type = "Duration"
 
+[env_file]
+description = "Path to a file containing environment variables to automatically load."
+env = "MISE_ENV_FILE"
+optional = true
+type = "Path"
+
 [env_shell_expand]
 description = "Enable shell-style variable expansion in env values (e.g., $FOO, ${BAR:-default})"
 docs = """
@@ -477,12 +515,6 @@ Undefined variables are left unexpanded (e.g., `$MISSING` stays as `$MISSING`).
 env = "MISE_ENV_SHELL_EXPAND"
 optional = true
 type = "Bool"
-
-[env_file]
-description = "Path to a file containing environment variables to automatically load."
-env = "MISE_ENV_FILE"
-optional = true
-type = "Path"
 
 [erlang.compile]
 description = "If true, compile erlang from source. If false, use precompiled binaries. If not set, use precompiled binaries if available."
@@ -539,29 +571,6 @@ description = "Timeout in seconds for HTTP requests to fetch new tool versions i
 env = "MISE_FETCH_REMOTE_VERSIONS_TIMEOUT"
 type = "Duration"
 
-[gix]
-default = true
-description = "Use gix for git operations, set to false to shell out to git."
-docs = """
-Use gix for git operations. This is generally faster but may not be as compatible if the
-system's gix is not the same version as the one used by mise.
-"""
-env = "MISE_GIX"
-hide = true
-type = "Bool"
-
-[global_config_file]
-description = "Path to the global mise config file. Default is `~/.config/mise/config.toml`. This must be an env var."
-env = "MISE_GLOBAL_CONFIG_FILE"
-optional = true
-type = "Path"
-
-[global_config_root]
-description = "Path which is used as `{{config_root}}` for the global config file. Default is `$HOME`. This must be an env var."
-env = "MISE_GLOBAL_CONFIG_ROOT"
-optional = true
-type = "Path"
-
 [github.github_attestations]
 default = true
 description = "Enable GitHub Artifact Attestations verification for github backend tools."
@@ -584,16 +593,39 @@ using SLSA provenance attestations.
 env = "MISE_GITHUB_SLSA"
 type = "Bool"
 
-[slsa]
+[github_attestations]
 default = true
-description = "Enable SLSA provenance verification globally."
+description = "Enable GitHub Artifact Attestations verification for supported tools."
 docs = """
-Enable/disable SLSA provenance verification globally for all backends that support it.
-When enabled, mise will verify the supply-chain integrity of downloaded tools
-using SLSA provenance attestations.
+Enable/disable GitHub Artifact Attestations verification globally.
+When enabled, mise will verify the authenticity and integrity of downloaded tools
+using GitHub's artifact attestation system for tools that support it (e.g., Ruby precompiled binaries).
 """
-env = "MISE_SLSA"
+env = "MISE_GITHUB_ATTESTATIONS"
 type = "Bool"
+
+[gix]
+default = true
+description = "Use gix for git operations, set to false to shell out to git."
+docs = """
+Use gix for git operations. This is generally faster but may not be as compatible if the
+system's gix is not the same version as the one used by mise.
+"""
+env = "MISE_GIX"
+hide = true
+type = "Bool"
+
+[global_config_file]
+description = "Path to the global mise config file. Default is `~/.config/mise/config.toml`. This must be an env var."
+env = "MISE_GLOBAL_CONFIG_FILE"
+optional = true
+type = "Path"
+
+[global_config_root]
+description = "Path which is used as `{{config_root}}` for the global config file. Default is `$HOME`. This must be an env var."
+env = "MISE_GLOBAL_CONFIG_ROOT"
+optional = true
+type = "Path"
 
 [go_default_packages_file]
 default = "~/.default-go-packages"
@@ -647,34 +679,6 @@ env = "MISE_GPG_VERIFY"
 optional = true
 type = "Bool"
 
-[github_attestations]
-default = true
-description = "Enable GitHub Artifact Attestations verification for supported tools."
-docs = """
-Enable/disable GitHub Artifact Attestations verification globally.
-When enabled, mise will verify the authenticity and integrity of downloaded tools
-using GitHub's artifact attestation system for tools that support it (e.g., Ruby precompiled binaries).
-
-Individual tools can override this setting with their own `<tool>.github_attestations` setting.
-"""
-env = "MISE_GITHUB_ATTESTATIONS"
-type = "Bool"
-
-[http_timeout]
-default = "30s"
-description = "Timeout in seconds for all HTTP requests in mise."
-env = "MISE_HTTP_TIMEOUT"
-type = "Duration"
-
-[http_retries]
-default = 0
-description = "Number of retries for HTTP requests in mise."
-docs = """
-Uses an exponential backoff strategy. The duration is calculated by taking the base (10ms) to the n-th power.
-"""
-env = "MISE_HTTP_RETRIES"
-type = "Integer"
-
 [hook_env.cache_ttl]
 default = "0s"
 description = "Cache hook-env directory checks for this duration. Useful for slow filesystems like NFS."
@@ -710,6 +714,21 @@ This setting is useful when:
 """
 env = "MISE_HOOK_ENV_CHPWD_ONLY"
 type = "Bool"
+
+[http_retries]
+default = 0
+description = "Number of retries for HTTP requests in mise."
+docs = """
+Uses an exponential backoff strategy. The duration is calculated by taking the base (10ms) to the n-th power.
+"""
+env = "MISE_HTTP_RETRIES"
+type = "Integer"
+
+[http_timeout]
+default = "30s"
+description = "Timeout in seconds for all HTTP requests in mise."
+env = "MISE_HTTP_TIMEOUT"
+type = "Duration"
 
 [idiomatic_version_file]
 deprecated = "This has been replaced with the idiomatic_version_file_enable_tools setting."
@@ -795,6 +814,12 @@ env = "MISE_INSTALL_BEFORE"
 optional = true
 type = "String"
 
+[java.shorthand_vendor]
+default = "openjdk"
+description = "Shorthand for Java. Used when installing Java without a vendor prefix."
+env = "MISE_JAVA_SHORTHAND_VENDOR"
+type = "String"
+
 [jobs]
 default = 8
 description = "How many jobs to run concurrently such as tool installs."
@@ -831,6 +856,34 @@ env = "MISE_LIBGIT2"
 hide = true
 type = "Bool"
 
+[locked]
+default = false
+description = "Require lockfile URLs to be present during installation."
+docs = """
+
+> [!NOTE]
+> This setting requires [lockfile](#lockfile) to be enabled.
+
+When enabled, `mise install` will fail if tools don't have pre-resolved URLs in the lockfile
+for the current platform. This prevents API calls to GitHub, aqua registry, etc. and ensures
+reproducible installations.
+
+This is useful in CI/CD environments where you want to:
+- Avoid GitHub API rate limits
+- Ensure deterministic builds using pre-resolved URLs
+- Fail fast if the lockfile is incomplete
+
+To generate lockfile URLs, run:
+
+```sh
+mise lock
+```
+
+Equivalent to passing `--locked` to `mise install`.
+"""
+env = "MISE_LOCKED"
+type = "Bool"
+
 [lockfile]
 default = true
 description = "Create and read lockfiles for tool versions."
@@ -859,34 +912,6 @@ The lockfile is named the same as the config file but with `.lock` instead of `.
 - `.config/mise.toml` -> `.config/mise.lock`
 """
 env = "MISE_LOCKFILE"
-type = "Bool"
-
-[locked]
-default = false
-description = "Require lockfile URLs to be present during installation."
-docs = """
-
-> [!NOTE]
-> This setting requires [lockfile](#lockfile) to be enabled.
-
-When enabled, `mise install` will fail if tools don't have pre-resolved URLs in the lockfile
-for the current platform. This prevents API calls to GitHub, aqua registry, etc. and ensures
-reproducible installations.
-
-This is useful in CI/CD environments where you want to:
-- Avoid GitHub API rate limits
-- Ensure deterministic builds using pre-resolved URLs
-- Fail fast if the lockfile is incomplete
-
-To generate lockfile URLs, run:
-
-```sh
-mise lock
-```
-
-Equivalent to passing `--locked` to `mise install`.
-"""
-env = "MISE_LOCKED"
 type = "Bool"
 
 [log_level]
@@ -943,11 +968,56 @@ env = "MISE_NO_HOOKS"
 optional = true
 type = "Bool"
 
+[node.cflags]
+description = "Additional CFLAGS options (e.g., to override -O3)."
+env = "MISE_NODE_CFLAGS"
+optional = true
+type = "String"
+
 [node.compile]
 description = "Compile node from source."
 env = "MISE_NODE_COMPILE"
 optional = true
 type = "Bool"
+
+[node.concurrency]
+default_docs = "Number of physical CPUs (unless ninja is enabled)"
+description = "How many jobs should be used in compilation."
+docs = """
+Number of parallel jobs for node compilation. Defaults to the number of physical CPU cores when using make. When ninja is enabled, this defaults to unset (ninja handles concurrency automatically).
+"""
+env = "MISE_NODE_CONCURRENCY"
+optional = true
+type = "Integer"
+
+[node.configure_opts]
+description = "Additional ./configure options."
+env = "MISE_NODE_CONFIGURE_OPTS"
+optional = true
+type = "String"
+
+[node.corepack]
+description = "Installs the default corepack shims after installing any node version."
+env = "MISE_NODE_COREPACK"
+type = "Bool"
+
+[node.default_packages_file]
+default_docs = "~/.default-npm-packages"
+description = "Path to a file containing default npm packages to install."
+docs = """
+Path to a file containing packages to install with npm after installing a new Node.js version.
+Defaults to `~/.default-npm-packages`. Also checks `~/.default-nodejs-packages` and `~/.default-node-packages` for backwards compatibility.
+
+Format: one package per line, with optional version specifier:
+```
+lodash
+typescript@latest
+@types/node@^20
+```
+"""
+env = "MISE_NODE_DEFAULT_PACKAGES_FILE"
+optional = true
+type = "Path"
 
 [node.flavor]
 description = "Install a specific node flavor like glibc-217 or musl. Use with unofficial node build repo."
@@ -961,11 +1031,60 @@ env = "MISE_NODE_GPG_VERIFY"
 optional = true
 type = "Bool"
 
+[node.make]
+description = "Make command to use."
+env = "MISE_NODE_MAKE"
+optional = true
+type = "String"
+
+[node.make_install_opts]
+description = "Additional make install options."
+env = "MISE_NODE_MAKE_INSTALL_OPTS"
+optional = true
+type = "String"
+
+[node.make_opts]
+description = "Additional make options."
+env = "MISE_NODE_MAKE_OPTS"
+optional = true
+type = "String"
+
 [node.mirror_url]
 description = "Mirror to download node tarballs from."
 env = "MISE_NODE_MIRROR_URL"
 optional = true
 type = "Url"
+
+[node.ninja]
+default_docs = "Auto-detected: true if ninja is on PATH"
+description = "Use ninja instead of make to compile node."
+docs = """
+If true, use ninja build system instead of make for faster compilation.
+Defaults to true if `ninja` is found on PATH, false otherwise.
+
+Ninja is generally faster than make for incremental builds.
+"""
+env = "MISE_NODE_NINJA"
+optional = true
+type = "Bool"
+
+[node.nodenv_root]
+default = "~/.nodenv"
+description = "Directory for nodenv."
+env = "NODENV_ROOT"
+type = "Path"
+
+[node.nvm_dir]
+default = "~/.nvm"
+description = "Directory for nvm."
+env = "NVM_DIR"
+type = "Path"
+
+[node.verify]
+default = true
+description = "Verify the downloaded assets using GPG."
+env = "MISE_NODE_VERIFY"
+type = "Bool"
 
 [not_found_auto_install]
 default = true
@@ -1011,8 +1130,25 @@ Can be one of:
 - `bun`
 - `pnpm`
 """
+enum = ["npm", "bun", "pnpm"]
 env = "MISE_NPM_PACKAGE_MANAGER"
+rust_type = "NpmPackageManager"
 type = "String"
+
+[offline]
+description = "Disable all HTTP requests. Tools will only use locally cached data."
+docs = """
+When enabled, mise will never make HTTP requests. This is useful for air-gapped environments,
+VPN issues, or when you want to ensure mise only uses locally cached data.
+
+Note: Commands like `hook-env`, `activate`, `exec`, `env`, and shims already avoid most network
+requests via the `prefer_offline` behavior. Set `offline = true` to completely block all
+HTTP requests for commands like `mise install` or `mise ls-remote` as well.
+
+Can also be set with the `--offline` CLI flag.
+"""
+env = "MISE_OFFLINE"
+type = "Bool"
 
 [os]
 default_docs = '"linux" | "macos" | "windows"'
@@ -1115,6 +1251,18 @@ default = "7d"
 description = "How long to wait before updating plugins automatically (note this isn't currently implemented)."
 env = "MISE_PLUGIN_AUTOUPDATE_LAST_CHECK_DURATION"
 type = "String"
+
+[prefer_offline]
+description = "Prefer locally cached data over remote fetches when possible."
+docs = """
+When enabled, mise will prefer locally cached data and avoid remote version fetching when
+possible. Unlike `offline`, this still allows network requests as a fallback.
+
+This is automatically enabled for fast commands like `hook-env`, `activate`, `exec`, `env`,
+`ls`, `current`, `where`, and shims.
+"""
+env = "MISE_PREFER_OFFLINE"
+type = "Bool"
 
 [profile]
 deprecated = "Use MISE_ENV_FILE instead."
@@ -1309,28 +1457,6 @@ description = "Connect stdin/stdout/stderr to child processes."
 env = "MISE_RAW"
 type = "Bool"
 
-[terminal_progress]
-default = true
-description = "Enable terminal progress indicators (OSC 9;4) for compatible terminals."
-docs = """
-Enable terminal progress indicators using OSC 9;4 escape sequences. This provides
-native progress bars in the terminal window chrome for terminals that support it,
-including Ghostty, iTerm2, VS Code's integrated terminal, Windows Terminal, and VTE-based
-terminals (GNOME Terminal, Ptyxis, etc.).
-
-When enabled, mise will send progress updates to the terminal during operations like
-tool installations. The progress bar appears in the terminal's window UI, separate
-from the text output.
-
-mise automatically detects whether your terminal supports OSC 9;4 and will only send
-these sequences if supported. Terminals like Alacritty, WezTerm, and kitty
-do not support OSC 9;4 and will not receive these sequences.
-
-Set to false to disable this feature if you prefer not to see these indicators.
-"""
-env = "MISE_TERMINAL_PROGRESS"
-type = "Bool"
-
 [ruby.apply_patches]
 description = "A list of patch files or URLs to apply to ruby source."
 env = "MISE_RUBY_APPLY_PATCHES"
@@ -1355,6 +1481,18 @@ default = "~/.default-gems"
 description = "Path to a file containing default ruby gems to install when installing ruby."
 env = "MISE_RUBY_DEFAULT_PACKAGES_FILE"
 type = "String"
+
+[ruby.github_attestations]
+description = "Enable GitHub Artifact Attestations verification for precompiled Ruby binaries."
+docs = """
+Override the global `github_attestations` setting for Ruby precompiled binaries.
+When enabled, mise will verify the authenticity of precompiled Ruby binaries from jdx/ruby.
+
+Defaults to the global `github_attestations` setting if not specified.
+"""
+env = "MISE_RUBY_GITHUB_ATTESTATIONS"
+optional = true
+type = "Bool"
 
 [ruby.precompiled_arch]
 description = "Override architecture identifier for precompiled Ruby binaries."
@@ -1388,18 +1526,6 @@ precompiled_url = "https://my-mirror.example.com/ruby-{version}.{platform}.tar.g
 """
 env = "MISE_RUBY_PRECOMPILED_URL"
 type = "String"
-
-[ruby.github_attestations]
-description = "Enable GitHub Artifact Attestations verification for precompiled Ruby binaries."
-docs = """
-Override the global `github_attestations` setting for Ruby precompiled binaries.
-When enabled, mise will verify the authenticity of precompiled Ruby binaries from jdx/ruby.
-
-Defaults to the global `github_attestations` setting if not specified.
-"""
-env = "MISE_RUBY_GITHUB_ATTESTATIONS"
-optional = true
-type = "Bool"
 
 [ruby.ruby_build_opts]
 description = "Options to pass to ruby-build."
@@ -1442,6 +1568,12 @@ env = "MISE_CARGO_HOME"
 optional = true
 type = "Path"
 
+[rust.default_host]
+description = "Default host triple to pass to `rustup init` via `--default-host`."
+env = "MISE_RUST_DEFAULT_HOST"
+optional = true
+type = "String"
+
 [rust.rustup_home]
 description = "Path to the rustup home directory. Defaults to `~/.rustup` or `%USERPROFILE%\\.rustup`"
 env = "MISE_RUSTUP_HOME"
@@ -1476,31 +1608,15 @@ description = "Suppress all `mise run|watch` output except errors—including wh
 env = "MISE_SILENT"
 type = "Bool"
 
-[age.identity_files]
-description = "[experimental] List of age identity files to use for decryption."
-env = "MISE_AGE_IDENTITY_FILES"
-optional = true
-rust_type = "Vec<PathBuf>"
-type = "ListPath"
-
-[age.key_file]
-default_docs = "~/.config/mise/age.txt"
-description = "[experimental] Path to the age private key file to use for encryption/decryption."
-env = "MISE_AGE_KEY_FILE"
-optional = true
-type = "Path"
-
-[age.ssh_identity_files]
-description = "[experimental] List of SSH identity files to use for age decryption."
-env = "MISE_AGE_SSH_IDENTITY_FILES"
-optional = true
-rust_type = "Vec<PathBuf>"
-type = "ListPath"
-
-[age.strict]
+[slsa]
 default = true
-description = "If true, fail when age decryption fails (including when age is not available, the key is missing, or the key is invalid). If false, skip decryption and continue in these cases."
-env = "MISE_AGE_STRICT"
+description = "Enable SLSA provenance verification globally."
+docs = """
+Enable/disable SLSA provenance verification globally for all backends that support it.
+When enabled, mise will verify the supply-chain integrity of downloaded tools
+using SLSA provenance attestations.
+"""
+env = "MISE_SLSA"
 type = "Bool"
 
 [sops.age_key]
@@ -1556,15 +1672,15 @@ description = "Show configured env vars when entering a directory with a mise.to
 env = "MISE_STATUS_MESSAGE_SHOW_ENV"
 type = "Bool"
 
-[status.show_tools]
-description = "Show configured tools when entering a directory with a mise.toml file."
-env = "MISE_STATUS_MESSAGE_SHOW_TOOLS"
-type = "Bool"
-
 [status.show_prepare_stale]
 default = true
 description = "Show warning when prepare providers have stale dependencies."
 env = "MISE_STATUS_SHOW_PREPARE_STALE"
+type = "Bool"
+
+[status.show_tools]
+description = "Show configured tools when entering a directory with a mise.toml file."
+env = "MISE_STATUS_MESSAGE_SHOW_TOOLS"
 type = "Bool"
 
 [status.truncate]
@@ -1592,7 +1708,7 @@ env = "MISE_SYSTEM_CONFIG_FILE"
 optional = true
 type = "Path"
 
-[task_disable_paths]
+[task.disable_paths]
 default = []
 description = "Paths that mise will not look for tasks in."
 env = "MISE_TASK_DISABLE_PATHS"
@@ -1600,7 +1716,74 @@ parse_env = "list_by_colon"
 rust_type = "BTreeSet<PathBuf>"
 type = "ListPath"
 
-[task_output]
+[task.disable_spec_from_run_scripts]
+default = false
+description = "Opt out of parsing task run scripts to infer the usage spec (arguments and flags). When enabled, mise will derive the usage spec only from the `usage` field, ignoring any `arg()`, `option()`, or `flag()` templates used in run scripts. This can restore previous behavior and avoid the extra template pass over run scripts when collecting specs."
+docs = """
+When enabled, `arg()`, `option()`, and `flag()` Tera functions in run scripts will not contribute
+to the task's usage spec—only the explicit `usage` field is used.
+
+This is useful for:
+- Skipping the extra template pass over run scripts (performance)
+- Avoiding two-pass parsing quirks where template functions return empty strings during spec collection
+- Early opt-out before Tera template arguments are removed in 2026.11.0
+"""
+env = "MISE_TASK_DISABLE_SPEC_FROM_RUN_SCRIPTS"
+type = "Bool"
+
+[task.monorepo_depth]
+default = 5
+description = "Maximum depth to search for task files in monorepo subdirectories."
+docs = """
+When using monorepo mode (experimental_monorepo_root = true), this controls how deep
+mise will search for task files in subdirectories.
+
+**Depth levels:**
+- 1 = immediate children only (monorepo_root/projects/)
+- 2 = grandchildren (monorepo_root/projects/frontend/)
+- 5 = default (5 levels deep)
+
+**Performance tip:** Reduce this value if you have a very large monorepo and notice
+slow task discovery. For example, if your projects are all at `projects/*`, set to 2.
+
+**Example:**
+```toml
+[settings]
+task.monorepo_depth = 3  # Only search 3 levels deep
+```
+
+Or via environment variable:
+```bash
+export MISE_TASK_MONOREPO_DEPTH=3
+```
+"""
+env = "MISE_TASK_MONOREPO_DEPTH"
+type = "Integer"
+
+[task.monorepo_exclude_dirs]
+default = []
+description = "Directory patterns to exclude when discovering monorepo subdirectories."
+docs = """
+If empty (default), uses default exclusions: node_modules, target, dist, build.
+If you specify any patterns, ONLY those patterns will be excluded (defaults are NOT included).
+For example, setting to [".temp", "vendor"] will exclude only those two directories.
+"""
+env = "MISE_TASK_MONOREPO_EXCLUDE_DIRS"
+parse_env = "list_by_comma"
+rust_type = "Vec<String>"
+type = "ListString"
+
+[task.monorepo_respect_gitignore]
+default = true
+description = "Whether to respect .gitignore files when discovering monorepo subdirectories."
+docs = """
+When enabled, mise will skip directories that are ignored by .gitignore files
+when discovering tasks in a monorepo.
+"""
+env = "MISE_TASK_MONOREPO_RESPECT_GITIGNORE"
+type = "Bool"
+
+[task.output]
 description = "Change output style when executing tasks."
 docs = """
 Change output style when executing tasks. This controls the output of `mise run`.
@@ -1608,7 +1791,7 @@ Change output style when executing tasks. This controls the output of `mise run`
 enum = [
   { value = "prefix", description = "(default if jobs > 1) print by line with the prefix of the task name" },
   { value = "interleave", description = "(default if jobs == 1 or all tasks run sequentially) print output as it comes in" },
-  { value = "keep-order", description = "print output from tasks in the order they are defined" },
+  { value = "keep-order", description = "stream one task's output live while buffering others, printing in definition order as tasks complete" },
   { value = "replacing", description = "replace stdout each time a line is printed-this uses similar logic as `mise install`" },
   { value = "timed", description = "only show stdout lines that take longer than 1s to complete" },
   { value = "quiet", description = "print only stdout/stderr from tasks and nothing from mise" },
@@ -1619,19 +1802,24 @@ optional = true
 rust_type = "crate::task::TaskOutput"
 type = "String"
 
-[task_remote_no_cache]
+[task.remote_no_cache]
 description = "Mise will always fetch the latest tasks from the remote, by default the cache is used."
 env = "MISE_TASK_REMOTE_NO_CACHE"
 optional = true
 type = "Bool"
 
-[task_run_auto_install]
+[task.run_auto_install]
 default = true
 description = "Automatically install missing tools when executing tasks."
 env = "MISE_TASK_RUN_AUTO_INSTALL"
 type = "Bool"
 
-[task_skip]
+[task.show_full_cmd]
+description = "Disable truncation of command lines in task execution output. When true, the full command line will be shown."
+env = "MISE_TASK_SHOW_CMD_NO_TRUNC"
+type = "Bool"
+
+[task.skip]
 default = []
 description = "Tasks to skip when running `mise run`."
 env = "MISE_TASK_SKIP"
@@ -1639,26 +1827,139 @@ parse_env = "set_by_comma"
 rust_type = "BTreeSet<String>"
 type = "SetString"
 
-[task_skip_depends]
+[task.skip_depends]
 description = "Run only specified tasks skipping all dependencies."
 env = "MISE_TASK_SKIP_DEPENDS"
 type = "Bool"
 
-[task_timeout]
+[task.source_freshness_equal_mtime_is_fresh]
+default = false
+description = "When source mtime equals output mtime, consider sources fresh (use <=). Default false uses strict < comparison."
+env = "MISE_TASK_SOURCE_FRESHNESS_EQUAL_MTIME_IS_FRESH"
+type = "Bool"
+
+[task.source_freshness_hash_contents]
+default = false
+description = "Use content hashing (blake3) instead of metadata for source freshness. More accurate but slower."
+env = "MISE_TASK_SOURCE_FRESHNESS_HASH_CONTENTS"
+type = "Bool"
+
+[task.timeout]
 description = "Default timeout for tasks. Can be overridden by individual tasks."
 env = "MISE_TASK_TIMEOUT"
 optional = true
 type = "Duration"
 
-[task_timings]
+[task.timings]
 description = "Show completion message with elapsed time for each task on `mise run`. Default shows when output type is `prefix`."
 env = "MISE_TASK_TIMINGS"
 optional = true
 type = "Bool"
 
+[task_disable_paths]
+deprecated = "Use task.disable_paths instead."
+deprecated_remove_at = "2027.2.0"
+deprecated_warn_at = "2026.8.0"
+description = "Paths that mise will not look for tasks in."
+hide = true
+optional = true
+rust_type = "BTreeSet<PathBuf>"
+type = "ListPath"
+
+[task_output]
+deprecated = "Use task.output instead."
+deprecated_remove_at = "2027.2.0"
+deprecated_warn_at = "2026.8.0"
+description = "Change output style when executing tasks."
+hide = true
+optional = true
+rust_type = "crate::task::TaskOutput"
+type = "String"
+
+[task_remote_no_cache]
+deprecated = "Use task.remote_no_cache instead."
+deprecated_remove_at = "2027.2.0"
+deprecated_warn_at = "2026.8.0"
+description = "Mise will always fetch the latest tasks from the remote, by default the cache is used."
+hide = true
+optional = true
+type = "Bool"
+
+[task_run_auto_install]
+deprecated = "Use task.run_auto_install instead."
+deprecated_remove_at = "2027.2.0"
+deprecated_warn_at = "2026.8.0"
+description = "Automatically install missing tools when executing tasks."
+hide = true
+optional = true
+type = "Bool"
+
 [task_show_full_cmd]
+deprecated = "Use task.show_full_cmd instead."
+deprecated_remove_at = "2027.2.0"
+deprecated_warn_at = "2026.8.0"
 description = "Disable truncation of command lines in task execution output. When true, the full command line will be shown."
-env = "MISE_TASK_SHOW_CMD_NO_TRUNC"
+hide = true
+optional = true
+type = "Bool"
+
+[task_skip]
+deprecated = "Use task.skip instead."
+deprecated_remove_at = "2027.2.0"
+deprecated_warn_at = "2026.8.0"
+description = "Tasks to skip when running `mise run`."
+hide = true
+optional = true
+rust_type = "BTreeSet<String>"
+type = "SetString"
+
+[task_skip_depends]
+deprecated = "Use task.skip_depends instead."
+deprecated_remove_at = "2027.2.0"
+deprecated_warn_at = "2026.8.0"
+description = "Run only specified tasks skipping all dependencies."
+hide = true
+optional = true
+type = "Bool"
+
+[task_timeout]
+deprecated = "Use task.timeout instead."
+deprecated_remove_at = "2027.2.0"
+deprecated_warn_at = "2026.8.0"
+description = "Default timeout for tasks. Can be overridden by individual tasks."
+hide = true
+optional = true
+type = "Duration"
+
+[task_timings]
+deprecated = "Use task.timings instead."
+deprecated_remove_at = "2027.2.0"
+deprecated_warn_at = "2026.8.0"
+description = "Show completion message with elapsed time for each task on `mise run`. Default shows when output type is `prefix`."
+hide = true
+optional = true
+type = "Bool"
+
+[terminal_progress]
+default = true
+description = "Enable terminal progress indicators (OSC 9;4) for compatible terminals."
+docs = """
+Enable terminal progress indicators using OSC 9;4 escape sequences. This provides
+native progress bars in the terminal window chrome for terminals that support it,
+including Ghostty, iTerm2, VS Code's integrated terminal, Windows Terminal, and VTE-based
+terminals (GNOME Terminal, Ptyxis, etc.).
+
+When enabled, mise will send progress updates to the terminal during operations like
+tool installations. The progress bar appears in the terminal's window UI, separate
+from the text output.
+
+mise automatically detects whether your terminal supports OSC 9;4 and will only send
+these sequences if supported. Terminals like Alacritty, WezTerm, and kitty
+do not support OSC 9;4 and will not receive these sequences.
+
+Set to false to disable this feature if you prefer not to see these indicators.
+"""
+env = "MISE_TERMINAL_PROGRESS"
 type = "Bool"
 
 [trace]
@@ -1814,83 +2115,4 @@ If you don't have the mirror list cached locally, you can place the newline-sepa
 server list inside `mise cache path`, folder `zig` as `community-mirrors.txt`.
 """
 env = "MISE_ZIG_USE_COMMUNITY_MIRRORS"
-type = "Bool"
-
-[task.disable_spec_from_run_scripts]
-default = false
-description = "Opt out of parsing task run scripts to infer the usage spec (arguments and flags). When enabled, mise will derive the usage spec only from the `usage` field, ignoring any `arg()`, `option()`, or `flag()` templates used in run scripts. This can restore previous behavior and avoid the extra template pass over run scripts when collecting specs."
-docs = """
-When enabled, `arg()`, `option()`, and `flag()` Tera functions in run scripts will not contribute
-to the task's usage spec—only the explicit `usage` field is used.
-
-This is useful for:
-- Skipping the extra template pass over run scripts (performance)
-- Avoiding two-pass parsing quirks where template functions return empty strings during spec collection
-- Early opt-out before Tera template arguments are removed in 2026.11.0
-"""
-env = "MISE_TASK_DISABLE_SPEC_FROM_RUN_SCRIPTS"
-type = "Bool"
-
-[task.monorepo_depth]
-default = 5
-description = "Maximum depth to search for task files in monorepo subdirectories."
-docs = """
-When using monorepo mode (experimental_monorepo_root = true), this controls how deep
-mise will search for task files in subdirectories.
-
-**Depth levels:**
-- 1 = immediate children only (monorepo_root/projects/)
-- 2 = grandchildren (monorepo_root/projects/frontend/)
-- 5 = default (5 levels deep)
-
-**Performance tip:** Reduce this value if you have a very large monorepo and notice
-slow task discovery. For example, if your projects are all at `projects/*`, set to 2.
-
-**Example:**
-```toml
-[settings]
-task.monorepo_depth = 3  # Only search 3 levels deep
-```
-
-Or via environment variable:
-```bash
-export MISE_TASK_MONOREPO_DEPTH=3
-```
-"""
-env = "MISE_TASK_MONOREPO_DEPTH"
-type = "Integer"
-
-[task.monorepo_exclude_dirs]
-default = []
-description = "Directory patterns to exclude when discovering monorepo subdirectories."
-docs = """
-If empty (default), uses default exclusions: node_modules, target, dist, build.
-If you specify any patterns, ONLY those patterns will be excluded (defaults are NOT included).
-For example, setting to [".temp", "vendor"] will exclude only those two directories.
-"""
-env = "MISE_TASK_MONOREPO_EXCLUDE_DIRS"
-parse_env = "list_by_comma"
-rust_type = "Vec<String>"
-type = "ListString"
-
-[task.monorepo_respect_gitignore]
-default = true
-description = "Whether to respect .gitignore files when discovering monorepo subdirectories."
-docs = """
-When enabled, mise will skip directories that are ignored by .gitignore files
-when discovering tasks in a monorepo.
-"""
-env = "MISE_TASK_MONOREPO_RESPECT_GITIGNORE"
-type = "Bool"
-
-[task.source_freshness_equal_mtime_is_fresh]
-default = false
-description = "When source mtime equals output mtime, consider sources fresh (use <=). Default false uses strict < comparison."
-env = "MISE_TASK_SOURCE_FRESHNESS_EQUAL_MTIME_IS_FRESH"
-type = "Bool"
-
-[task.source_freshness_hash_contents]
-default = false
-description = "Use content hashing (blake3) instead of metadata for source freshness. More accurate but slower."
-env = "MISE_TASK_SOURCE_FRESHNESS_HASH_CONTENTS"
 type = "Bool"

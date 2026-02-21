@@ -7,12 +7,11 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use crate::backend::ABackend;
 use crate::cli::args::BackendArg;
-use crate::config::Config;
-use crate::env;
+use crate::config::{Config, Settings};
 #[cfg(windows)]
 use crate::file;
 use crate::hash::hash_to_str;
-use crate::lockfile::{CondaPackageInfo, PlatformInfo};
+use crate::lockfile::{CondaPackageInfo, LockfileTool, PlatformInfo};
 use crate::toolset::{ToolRequest, ToolVersionOptions, tool_request};
 use console::style;
 use dashmap::DashMap;
@@ -53,9 +52,7 @@ impl ToolVersion {
             && !has_linked_version(request.ba())
             && let Some(lt) = request.lockfile_resolve(config)?
         {
-            let mut tv = Self::new(request.clone(), lt.version);
-            tv.lock_platforms = lt.platforms;
-            return Ok(tv);
+            return Ok(Self::from_lockfile(request.clone(), lt));
         }
         let backend = request.ba().backend()?;
         if let Some(plugin) = backend.plugin()
@@ -81,6 +78,12 @@ impl ToolVersion {
         };
         trace!("resolved: {tv}");
         Ok(tv)
+    }
+
+    fn from_lockfile(request: ToolRequest, lt: LockfileTool) -> Self {
+        let mut tv = Self::new(request, lt.version);
+        tv.lock_platforms = lt.platforms;
+        tv
     }
 
     pub fn ba(&self) -> &BackendArg {
@@ -197,6 +200,17 @@ impl ToolVersion {
     ) -> Result<ToolVersion> {
         let backend = request.backend()?;
         let v = config.resolve_alias(&backend, v).await?;
+
+        // Re-check the lockfile after alias resolution (e.g., "lts" → "24")
+        // The initial lockfile check in resolve() uses the unresolved alias which
+        // won't match lockfile entries like "24.13.0".starts_with("lts")
+        if opts.use_locked_version
+            && !has_linked_version(request.ba())
+            && let Some(lt) = request.lockfile_resolve_with_prefix(config, &v)?
+        {
+            return Ok(Self::from_lockfile(request.clone(), lt));
+        }
+
         match v.split_once(':') {
             Some((ref_type @ ("ref" | "tag" | "branch" | "rev"), r)) => {
                 return Ok(Self::resolve_ref(
@@ -227,15 +241,19 @@ impl ToolVersion {
             return build(v);
         }
 
+        let settings = Settings::get();
+        let is_offline = settings.offline();
+
         if v == "latest" {
             if !opts.latest_versions
                 && let Some(v) = backend.latest_installed_version(None)?
             {
                 return build(v);
             }
-            if let Some(v) = backend
-                .latest_version_with_opts(config, None, opts.before_date)
-                .await?
+            if !is_offline
+                && let Some(v) = backend
+                    .latest_version_with_opts(config, None, opts.before_date)
+                    .await?
             {
                 return build(v);
             }
@@ -249,12 +267,14 @@ impl ToolVersion {
                 return build(v.clone());
             }
         }
+        // When OFFLINE, skip ALL remote version fetching regardless of version format
+        if is_offline {
+            return build(v);
+        }
         // In prefer-offline mode (hook-env, activate, exec), skip remote version
         // fetching for fully-qualified versions (e.g. "2.3.2") that aren't installed.
         // Prefix versions like "2" still need remote resolution to find e.g. "2.1.0".
-        if env::PREFER_OFFLINE.load(std::sync::atomic::Ordering::Relaxed)
-            && v.matches('.').count() >= 2
-        {
+        if settings.prefer_offline() && v.matches('.').count() >= 2 {
             return build(v);
         }
         // First try with date filter (common case)
